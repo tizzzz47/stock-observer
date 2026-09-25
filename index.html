@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>美股指数观察器</title>
 
-    <!-- 固定 Chart.js 版本 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 
     <style>
@@ -150,7 +149,6 @@
         let sp500Data = [];
         let ndxData = [];
 
-        // 保存当前图表
         let priceChart = null;
 
 
@@ -275,15 +273,73 @@
 
 
         // =========================
+        // 找到最大回撤
+        // =========================
+
+        function findMaxDrawdown(selected) {
+
+            let peakIndex = 0;
+            let maxDrawdown = 0;
+
+            let maxPeakIndex = 0;
+            let maxBottomIndex = 0;
+
+
+            for (let i = 0; i < selected.length; i++) {
+
+                // 如果出现新的最高点
+                if (
+                    selected[i].value >
+                    selected[peakIndex].value
+                ) {
+
+                    peakIndex = i;
+
+                }
+
+
+                const drawdown =
+                    selected[i].value /
+                    selected[peakIndex].value -
+                    1;
+
+
+                // 找到新的最大回撤
+                if (drawdown < maxDrawdown) {
+
+                    maxDrawdown = drawdown;
+
+                    maxPeakIndex = peakIndex;
+                    maxBottomIndex = i;
+
+                }
+
+            }
+
+
+            return {
+                drawdown: maxDrawdown * 100,
+                peakIndex: maxPeakIndex,
+                bottomIndex: maxBottomIndex
+            };
+
+        }
+
+
+        // =========================
         // 绘制历史走势图
         // =========================
 
-        function drawChart(selected, indexName) {
+        function drawChart(
+            selected,
+            indexName,
+            maxDrawdownInfo
+        ) {
 
             const canvas =
                 document.getElementById("priceChart");
 
-            // 如果已经有旧图表，先删除
+
             if (priceChart) {
 
                 priceChart.destroy();
@@ -291,8 +347,7 @@
             }
 
 
-            // 数据太多时适当减少绘图点
-            // 计算仍然使用完整数据
+            // 最多绘制约1500个点
             const maxPoints = 1500;
 
             let chartData = selected;
@@ -307,7 +362,7 @@
                         index % step === 0
                     );
 
-                // 确保最后一天也显示
+
                 if (
                     chartData[chartData.length - 1] !==
                     selected[selected.length - 1]
@@ -318,6 +373,7 @@
                     );
 
                 }
+
             }
 
 
@@ -332,6 +388,101 @@
                 canvas.getContext("2d");
 
 
+            // 找到最大回撤高点和低点
+            const peak =
+                selected[maxDrawdownInfo.peakIndex];
+
+            const bottom =
+                selected[maxDrawdownInfo.bottomIndex];
+
+
+            // 找到它们在绘图数据中的位置
+            let peakChartIndex =
+                chartData.findIndex(
+                    item => item.date === peak.date
+                );
+
+            let bottomChartIndex =
+                chartData.findIndex(
+                    item => item.date === bottom.date
+                );
+
+
+            // 如果因为抽样没有刚好留下这两个点，
+            // 找最近的绘图点
+            if (peakChartIndex === -1) {
+
+                peakChartIndex = chartData.reduce(
+                    (best, item, index) => {
+
+                        const currentDiff =
+                            Math.abs(
+                                new Date(item.date) -
+                                new Date(peak.date)
+                            );
+
+                        const bestDiff =
+                            Math.abs(
+                                new Date(chartData[best].date) -
+                                new Date(peak.date)
+                            );
+
+                        return currentDiff < bestDiff
+                            ? index
+                            : best;
+
+                    },
+                    0
+                );
+
+            }
+
+
+            if (bottomChartIndex === -1) {
+
+                bottomChartIndex = chartData.reduce(
+                    (best, item, index) => {
+
+                        const currentDiff =
+                            Math.abs(
+                                new Date(item.date) -
+                                new Date(bottom.date)
+                            );
+
+                        const bestDiff =
+                            Math.abs(
+                                new Date(chartData[best].date) -
+                                new Date(bottom.date)
+                            );
+
+                        return currentDiff < bestDiff
+                            ? index
+                            : best;
+
+                    },
+                    0
+                );
+
+            }
+
+
+            // 创建特殊标记数据
+            const peakPoints =
+                values.map((value, index) =>
+                    index === peakChartIndex
+                        ? value
+                        : null
+                );
+
+
+            const bottomPoints =
+                values.map((value, index) =>
+                    index === bottomChartIndex
+                        ? value
+                        : null
+                );
+
+
             priceChart =
                 new Chart(ctx, {
 
@@ -342,6 +493,7 @@
                         labels: labels,
 
                         datasets: [
+
                             {
                                 label: indexName,
 
@@ -352,7 +504,32 @@
                                 pointRadius: 0,
 
                                 tension: 0
+                            },
+
+                            {
+                                label: "最大回撤起点",
+
+                                data: peakPoints,
+
+                                pointRadius: 7,
+
+                                pointHoverRadius: 9,
+
+                                showLine: false
+                            },
+
+                            {
+                                label: "最大回撤终点",
+
+                                data: bottomPoints,
+
+                                pointRadius: 7,
+
+                                pointHoverRadius: 9,
+
+                                showLine: false
                             }
+
                         ]
 
                     },
@@ -364,14 +541,33 @@
                         maintainAspectRatio: false,
 
                         interaction: {
+
                             mode: "index",
+
                             intersect: false
+
                         },
 
                         plugins: {
 
                             legend: {
+
                                 display: true
+
+                            },
+
+                            tooltip: {
+
+                                callbacks: {
+
+                                    afterTitle: function() {
+
+                                        return "";
+
+                                    }
+
+                                }
+
                             }
 
                         },
@@ -502,32 +698,8 @@
             // 最大回撤
             // =========================
 
-            let peak =
-                selected[0].value;
-
-            let maxDrawdown = 0;
-
-
-            for (const item of selected) {
-
-                if (item.value > peak) {
-
-                    peak = item.value;
-
-                }
-
-
-                const drawdown =
-                    (item.value / peak - 1) * 100;
-
-
-                if (drawdown < maxDrawdown) {
-
-                    maxDrawdown = drawdown;
-
-                }
-
-            }
+            const maxDrawdownInfo =
+                findMaxDrawdown(selected);
 
 
             // =========================
@@ -546,7 +718,7 @@
 
             document.getElementById("maxDrawdown")
                 .textContent =
-                maxDrawdown.toFixed(2) + "%";
+                maxDrawdownInfo.drawdown.toFixed(2) + "%";
 
 
             const indexName =
@@ -556,7 +728,7 @@
 
 
             message.textContent =
-                `使用 ${indexName} 数据，共 ${selected.length} 个交易日。`;
+                `使用 ${indexName} 数据，共 ${selected.length} 个交易日。最大回撤发生于 ${selected[maxDrawdownInfo.peakIndex].date} → ${selected[maxDrawdownInfo.bottomIndex].date}。`;
 
 
             // =========================
@@ -565,7 +737,8 @@
 
             drawChart(
                 selected,
-                indexName
+                indexName,
+                maxDrawdownInfo
             );
 
         }
