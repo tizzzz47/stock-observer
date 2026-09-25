@@ -71,11 +71,13 @@
 <body>
 
     <h1>美股指数观察器</h1>
+
     <div class="subtitle">
         用于观察指数历史表现
     </div>
 
     <div class="card">
+
         <h2>选择指数</h2>
 
         <select id="indexSelect">
@@ -92,9 +94,11 @@
         <br>
 
         <button onclick="calculate()">计算</button>
+
     </div>
 
     <div class="card">
+
         <h2>结果</h2>
 
         <div class="result">
@@ -117,31 +121,69 @@
         </div>
 
         <div id="message">
-            目前还没有接入真实的美股历史数据。
+            等待获取数据。
         </div>
+
     </div>
 
+
     <script>
-        function calculate() {
+
+        async function calculate() {
+
             const index = document.getElementById("indexSelect").value;
             const start = document.getElementById("startDate").value;
             const end = document.getElementById("endDate").value;
 
+            const message = document.getElementById("message");
+
             if (!start || !end) {
-                document.getElementById("message").textContent =
-                    "请先选择开始日期和结束日期。";
+                message.textContent = "请先选择开始日期和结束日期。";
                 return;
             }
 
             if (start >= end) {
-                document.getElementById("message").textContent =
-                    "结束日期必须晚于开始日期。";
+                message.textContent = "结束日期必须晚于开始日期。";
                 return;
             }
 
-            document.getElementById("message").textContent =
-                `已选择 ${index}：${start} → ${end}。下一步接入真实历史数据。`;
+            message.textContent = "正在获取历史数据……";
+
+            try {
+
+                const url =
+                    `https://stooq.com/q/d/l/?s=${index.toLowerCase()}.us&d1=${start.replaceAll("-", "")}&d2=${end.replaceAll("-", "")}&i=d`;
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error("数据请求失败");
+                }
+
+                const csv = await response.text();
+
+                console.log(csv);
+
+                if (!csv || csv.includes("No data")) {
+                    message.textContent = "没有找到这个日期范围的数据。";
+                    return;
+                }
+
+                message.textContent =
+                    `成功获取 ${index} 的历史数据！`;
+
+                console.log("获取到的数据：");
+                console.log(csv);
+
+            } catch (error) {
+
+                console.error(error);
+
+                message.textContent =
+                    "获取数据失败，请打开浏览器控制台查看错误。";
+            }
         }
+
     </script>
 
 </body>
