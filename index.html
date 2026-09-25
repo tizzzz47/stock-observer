@@ -73,7 +73,7 @@
     <h1>美股指数观察器</h1>
 
     <div class="subtitle">
-        用于观察指数历史表现
+        观察 S&P 500 和 Nasdaq-100 的历史表现
     </div>
 
     <div class="card">
@@ -81,9 +81,8 @@
         <h2>选择指数</h2>
 
         <select id="indexSelect">
-            <option value="SPY">SPY — 标普500 ETF</option>
-            <option value="QQQ">QQQ — 纳斯达克100 ETF</option>
-            <option value="VOO">VOO — 标普500 ETF</option>
+            <option value="SP500">S&P 500</option>
+            <option value="NDX">Nasdaq-100</option>
         </select>
 
         <h2>选择日期</h2>
@@ -121,7 +120,7 @@
         </div>
 
         <div id="message">
-            等待获取数据。
+            正在读取历史数据……
         </div>
 
     </div>
@@ -129,7 +128,112 @@
 
     <script>
 
-        async function calculate() {
+        let sp500Data = [];
+        let ndxData = [];
+
+
+        // 读取 S&P 500
+        async function loadSP500() {
+
+            const response = await fetch("sp500.csv");
+
+            if (!response.ok) {
+                throw new Error("无法读取 sp500.csv");
+            }
+
+            const text = await response.text();
+
+            const lines = text.trim().split(/\r?\n/);
+
+            const data = [];
+
+            // 跳过第一行标题
+            for (let i = 1; i < lines.length; i++) {
+
+                const parts = lines[i].split(",");
+
+                if (parts.length < 6) continue;
+
+                // 第2列：日期
+                const date = parts[1].replace(/"/g, "").split(" ")[0];
+
+                // 第6列：Close
+                const value = parseFloat(parts[5]);
+
+                if (!isNaN(value)) {
+                    data.push({
+                        date: date,
+                        value: value
+                    });
+                }
+            }
+
+            return data;
+        }
+
+
+        // 读取 Nasdaq-100
+        async function loadNDX() {
+
+            const response = await fetch("ndx.csv");
+
+            if (!response.ok) {
+                throw new Error("无法读取 ndx.csv");
+            }
+
+            const text = await response.text();
+
+            const lines = text.trim().split(/\r?\n/);
+
+            const data = [];
+
+            // 跳过第一行标题
+            for (let i = 1; i < lines.length; i++) {
+
+                const parts = lines[i].split(",");
+
+                if (parts.length < 2) continue;
+
+                const date = parts[0].trim();
+                const value = parseFloat(parts[1]);
+
+                if (!isNaN(value)) {
+                    data.push({
+                        date: date,
+                        value: value
+                    });
+                }
+            }
+
+            return data;
+        }
+
+
+        // 页面打开时读取数据
+        async function loadData() {
+
+            const message = document.getElementById("message");
+
+            try {
+
+                sp500Data = await loadSP500();
+                ndxData = await loadNDX();
+
+                message.textContent =
+                    `数据读取成功：S&P 500 ${sp500Data.length} 条，Nasdaq-100 ${ndxData.length} 条。`;
+
+            } catch (error) {
+
+                console.error(error);
+
+                message.textContent =
+                    "读取数据失败：" + error.message;
+            }
+        }
+
+
+        // 计算
+        function calculate() {
 
             const index = document.getElementById("indexSelect").value;
             const start = document.getElementById("startDate").value;
@@ -147,42 +251,84 @@
                 return;
             }
 
-            message.textContent = "正在获取历史数据……";
 
-            try {
+            const data =
+                index === "SP500" ? sp500Data : ndxData;
 
-                const url =
-                    `https://stooq.com/q/d/l/?s=${index.toLowerCase()}.us&d1=${start.replaceAll("-", "")}&d2=${end.replaceAll("-", "")}&i=d`;
 
-                const response = await fetch(url);
+            const selected = data.filter(item =>
+                item.date >= start && item.date <= end
+            );
 
-                if (!response.ok) {
-                    throw new Error("数据请求失败");
-                }
 
-                const csv = await response.text();
-
-                console.log(csv);
-
-                if (!csv || csv.includes("No data")) {
-                    message.textContent = "没有找到这个日期范围的数据。";
-                    return;
-                }
+            if (selected.length < 2) {
 
                 message.textContent =
-                    `成功获取 ${index} 的历史数据！`;
+                    "这个日期范围内没有足够的数据。";
 
-                console.log("获取到的数据：");
-                console.log(csv);
-
-            } catch (error) {
-
-                console.error(error);
-
-                message.textContent =
-                    "获取数据失败，请打开浏览器控制台查看错误。";
+                return;
             }
+
+
+            const firstValue = selected[0].value;
+            const lastValue = selected[selected.length - 1].value;
+
+
+            // 累计收益率
+            const totalReturn =
+                (lastValue / firstValue - 1) * 100;
+
+
+            // 年化收益率
+            const startTime =
+                new Date(selected[0].date).getTime();
+
+            const endTime =
+                new Date(selected[selected.length - 1].date).getTime();
+
+            const years =
+                (endTime - startTime) /
+                (365.25 * 24 * 60 * 60 * 1000);
+
+            const annualReturn =
+                (Math.pow(lastValue / firstValue, 1 / years) - 1) * 100;
+
+
+            // 最大回撤
+            let peak = selected[0].value;
+            let maxDrawdown = 0;
+
+            for (const item of selected) {
+
+                if (item.value > peak) {
+                    peak = item.value;
+                }
+
+                const drawdown =
+                    (item.value / peak - 1) * 100;
+
+                if (drawdown < maxDrawdown) {
+                    maxDrawdown = drawdown;
+                }
+            }
+
+
+            document.getElementById("returnValue").textContent =
+                totalReturn.toFixed(2) + "%";
+
+            document.getElementById("annualReturn").textContent =
+                annualReturn.toFixed(2) + "%";
+
+            document.getElementById("maxDrawdown").textContent =
+                maxDrawdown.toFixed(2) + "%";
+
+
+            message.textContent =
+                `使用 ${index === "SP500" ? "S&P 500" : "Nasdaq-100"} 数据，共 ${selected.length} 个交易日。`;
         }
+
+
+        loadData();
 
     </script>
 
