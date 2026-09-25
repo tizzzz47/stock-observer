@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股指数观察器</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        select,
+        input,
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .result {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .result-box {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+
+        .result-box strong {
+            display: block;
+            font-size: 24px;
+            margin-top: 8px;
+        }
+
+        #message {
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>美股指数观察器</h1>
+    <div class="subtitle">
+        用于观察指数历史表现
+    </div>
+
+    <div class="card">
+        <h2>选择指数</h2>
+
+        <select id="indexSelect">
+            <option value="SPY">SPY — 标普500 ETF</option>
+            <option value="QQQ">QQQ — 纳斯达克100 ETF</option>
+            <option value="VOO">VOO — 标普500 ETF</option>
+        </select>
+
+        <h2>选择日期</h2>
+
+        <input type="date" id="startDate">
+        <input type="date" id="endDate">
+
+        <br>
+
+        <button onclick="calculate()">计算</button>
+    </div>
+
+    <div class="card">
+        <h2>结果</h2>
+
+        <div class="result">
+
+            <div class="result-box">
+                累计收益率
+                <strong id="returnValue">--</strong>
+            </div>
+
+            <div class="result-box">
+                年化收益率
+                <strong id="annualReturn">--</strong>
+            </div>
+
+            <div class="result-box">
+                最大回撤
+                <strong id="maxDrawdown">--</strong>
+            </div>
+
+        </div>
+
+        <div id="message">
+            目前还没有接入真实的美股历史数据。
+        </div>
+    </div>
+
+    <script>
+        function calculate() {
+            const index = document.getElementById("indexSelect").value;
+            const start = document.getElementById("startDate").value;
+            const end = document.getElementById("endDate").value;
+
+            if (!start || !end) {
+                document.getElementById("message").textContent =
+                    "请先选择开始日期和结束日期。";
+                return;
+            }
+
+            if (start >= end) {
+                document.getElementById("message").textContent =
+                    "结束日期必须晚于开始日期。";
+                return;
+            }
+
+            document.getElementById("message").textContent =
+                `已选择 ${index}：${start} → ${end}。下一步接入真实历史数据。`;
+        }
+    </script>
+
+</body>
+</html>
