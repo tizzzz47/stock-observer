@@ -65,7 +65,8 @@
         }
 
         #message,
-        #dcaMessage {
+        #dcaMessage,
+        #comparisonMessage {
             margin-top: 20px;
             color: #666;
         }
@@ -90,6 +91,9 @@
         观察 S&P 500 和 Nasdaq-100 的历史表现
     </div>
 
+
+    <!-- ==================== 指数选择 ==================== -->
+
     <div class="card">
 
         <h2>选择指数</h2>
@@ -106,9 +110,14 @@
 
         <br>
 
-        <button onclick="calculate()">计算</button>
+        <button onclick="calculate()">
+            计算
+        </button>
 
     </div>
+
+
+    <!-- ==================== 普通指数结果 ==================== -->
 
     <div class="card">
 
@@ -139,6 +148,9 @@
 
     </div>
 
+
+    <!-- ==================== 历史走势 ==================== -->
+
     <div class="card">
 
         <h2>历史走势</h2>
@@ -148,6 +160,9 @@
         </div>
 
     </div>
+
+
+    <!-- ==================== 定投输入 ==================== -->
 
     <div class="card">
 
@@ -178,6 +193,9 @@
         </div>
 
     </div>
+
+
+    <!-- ==================== 定投结果 ==================== -->
 
     <div class="card">
 
@@ -214,6 +232,9 @@
 
     </div>
 
+
+    <!-- ==================== 一次性投入 ==================== -->
+
     <div class="card">
 
         <h2>一次性投入 vs 定投</h2>
@@ -226,18 +247,23 @@
             </div>
 
             <div class="result-box">
-                一次性最终市值
+                最终市值
                 <strong id="lumpValue">--</strong>
             </div>
 
             <div class="result-box">
-                一次性收益率
+                收益率
                 <strong id="lumpReturn">--</strong>
             </div>
 
             <div class="result-box">
-                一次性年化收益率
+                年化收益率
                 <strong id="lumpAnnualReturn">--</strong>
+            </div>
+
+            <div class="result-box">
+                指数价格倍数
+                <strong id="priceMultiple">--</strong>
             </div>
 
         </div>
@@ -247,6 +273,9 @@
         </div>
 
     </div>
+
+
+    <!-- ==================== 定投资产曲线 ==================== -->
 
     <div class="card">
 
@@ -258,6 +287,7 @@
 
     </div>
 
+
     <script>
 
         let sp500Data = [];
@@ -267,25 +297,35 @@
         let dcaChart = null;
 
 
+        // ============================================================
+        // 读取 S&P 500
+        // ============================================================
+
         async function loadSP500() {
 
-            const response = await fetch("sp500.csv");
+            const response =
+                await fetch("sp500.csv");
 
             if (!response.ok) {
                 throw new Error("无法读取 sp500.csv");
             }
 
-            const text = await response.text();
+            const text =
+                await response.text();
 
-            const lines = text.trim().split(/\r?\n/);
+            const lines =
+                text.trim().split(/\r?\n/);
 
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
 
-                const parts = lines[i].split(",");
+                const parts =
+                    lines[i].split(",");
 
-                if (parts.length < 6) continue;
+                if (parts.length < 6) {
+                    continue;
+                }
 
                 const date =
                     parts[1]
@@ -307,29 +347,38 @@
             }
 
             return data;
-
         }
 
 
+        // ============================================================
+        // 读取 Nasdaq-100
+        // ============================================================
+
         async function loadNDX() {
 
-            const response = await fetch("ndx.csv");
+            const response =
+                await fetch("ndx.csv");
 
             if (!response.ok) {
                 throw new Error("无法读取 ndx.csv");
             }
 
-            const text = await response.text();
+            const text =
+                await response.text();
 
-            const lines = text.trim().split(/\r?\n/);
+            const lines =
+                text.trim().split(/\r?\n/);
 
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
 
-                const parts = lines[i].split(",");
+                const parts =
+                    lines[i].split(",");
 
-                if (parts.length < 2) continue;
+                if (parts.length < 2) {
+                    continue;
+                }
 
                 const date =
                     parts[0].trim();
@@ -349,9 +398,12 @@
             }
 
             return data;
-
         }
 
+
+        // ============================================================
+        // 读取数据
+        // ============================================================
 
         async function loadData() {
 
@@ -381,15 +433,24 @@
         }
 
 
+        // ============================================================
+        // 最大回撤
+        // ============================================================
+
         function findMaxDrawdown(selected) {
 
             let peakIndex = 0;
+
             let maxDrawdown = 0;
 
             let maxPeakIndex = 0;
             let maxBottomIndex = 0;
 
-            for (let i = 0; i < selected.length; i++) {
+            for (
+                let i = 0;
+                i < selected.length;
+                i++
+            ) {
 
                 if (
                     selected[i].value >
@@ -417,13 +478,24 @@
             }
 
             return {
-                drawdown: maxDrawdown * 100,
-                peakIndex: maxPeakIndex,
-                bottomIndex: maxBottomIndex
+
+                drawdown:
+                    maxDrawdown * 100,
+
+                peakIndex:
+                    maxPeakIndex,
+
+                bottomIndex:
+                    maxBottomIndex
+
             };
 
         }
 
+
+        // ============================================================
+        // 历史走势图
+        // ============================================================
 
         function drawChart(
             selected,
@@ -445,20 +517,30 @@
             if (selected.length > maxPoints) {
 
                 const step =
-                    Math.ceil(selected.length / maxPoints);
+                    Math.ceil(
+                        selected.length /
+                        maxPoints
+                    );
 
                 chartData =
-                    selected.filter((item, index) =>
-                        index % step === 0
+                    selected.filter(
+                        (item, index) =>
+                            index % step === 0
                     );
 
                 if (
-                    chartData[chartData.length - 1] !==
-                    selected[selected.length - 1]
+                    chartData[
+                        chartData.length - 1
+                    ] !==
+                    selected[
+                        selected.length - 1
+                    ]
                 ) {
 
                     chartData.push(
-                        selected[selected.length - 1]
+                        selected[
+                            selected.length - 1
+                        ]
                     );
 
                 }
@@ -466,25 +548,35 @@
             }
 
             const labels =
-                chartData.map(item => item.date);
+                chartData.map(
+                    item => item.date
+                );
 
             const values =
-                chartData.map(item => item.value);
+                chartData.map(
+                    item => item.value
+                );
 
             const peak =
-                selected[maxDrawdownInfo.peakIndex];
+                selected[
+                    maxDrawdownInfo.peakIndex
+                ];
 
             const bottom =
-                selected[maxDrawdownInfo.bottomIndex];
+                selected[
+                    maxDrawdownInfo.bottomIndex
+                ];
 
             let peakChartIndex =
                 chartData.findIndex(
-                    item => item.date === peak.date
+                    item =>
+                        item.date === peak.date
                 );
 
             let bottomChartIndex =
                 chartData.findIndex(
-                    item => item.date === bottom.date
+                    item =>
+                        item.date === bottom.date
                 );
 
             if (peakChartIndex === -1) {
@@ -497,17 +589,19 @@
             }
 
             const peakPoints =
-                values.map((value, index) =>
-                    index === peakChartIndex
-                        ? value
-                        : null
+                values.map(
+                    (value, index) =>
+                        index === peakChartIndex
+                            ? value
+                            : null
                 );
 
             const bottomPoints =
-                values.map((value, index) =>
-                    index === bottomChartIndex
-                        ? value
-                        : null
+                values.map(
+                    (value, index) =>
+                        index === bottomChartIndex
+                            ? value
+                            : null
                 );
 
             const ctx =
@@ -591,19 +685,31 @@
         }
 
 
+        // ============================================================
+        // 普通指数计算
+        // ============================================================
+
         function calculate() {
 
             const index =
-                document.getElementById("indexSelect").value;
+                document.getElementById(
+                    "indexSelect"
+                ).value;
 
             const start =
-                document.getElementById("startDate").value;
+                document.getElementById(
+                    "startDate"
+                ).value;
 
             const end =
-                document.getElementById("endDate").value;
+                document.getElementById(
+                    "endDate"
+                ).value;
 
             const message =
-                document.getElementById("message");
+                document.getElementById(
+                    "message"
+                );
 
             if (!start || !end) {
 
@@ -611,7 +717,6 @@
                     "请先选择开始日期和结束日期。";
 
                 return;
-
             }
 
             if (start >= end) {
@@ -620,7 +725,6 @@
                     "结束日期必须晚于开始日期。";
 
                 return;
-
             }
 
             const data =
@@ -629,9 +733,10 @@
                     : ndxData;
 
             const selected =
-                data.filter(item =>
-                    item.date >= start &&
-                    item.date <= end
+                data.filter(
+                    item =>
+                        item.date >= start &&
+                        item.date <= end
                 );
 
             if (selected.length < 2) {
@@ -640,50 +745,79 @@
                     "这个日期范围内没有足够的数据。";
 
                 return;
-
             }
 
             const firstValue =
                 selected[0].value;
 
             const lastValue =
-                selected[selected.length - 1].value;
+                selected[
+                    selected.length - 1
+                ].value;
 
             const totalReturn =
-                (lastValue / firstValue - 1) * 100;
+                (
+                    lastValue /
+                    firstValue -
+                    1
+                ) * 100;
 
             const startTime =
-                new Date(selected[0].date).getTime();
+                new Date(
+                    selected[0].date
+                ).getTime();
 
             const endTime =
-                new Date(selected[selected.length - 1].date).getTime();
+                new Date(
+                    selected[
+                        selected.length - 1
+                    ].date
+                ).getTime();
 
             const years =
-                (endTime - startTime) /
-                (365.25 * 24 * 60 * 60 * 1000);
+                (
+                    endTime -
+                    startTime
+                ) /
+                (
+                    365.25 *
+                    24 *
+                    60 *
+                    60 *
+                    1000
+                );
 
             const annualReturn =
                 (
                     Math.pow(
-                        lastValue / firstValue,
+                        lastValue /
+                        firstValue,
                         1 / years
                     ) - 1
                 ) * 100;
 
             const maxDrawdownInfo =
-                findMaxDrawdown(selected);
+                findMaxDrawdown(
+                    selected
+                );
 
-            document.getElementById("returnValue")
-                .textContent =
-                totalReturn.toFixed(2) + "%";
+            document.getElementById(
+                "returnValue"
+            ).textContent =
+                totalReturn.toFixed(2) +
+                "%";
 
-            document.getElementById("annualReturn")
-                .textContent =
-                annualReturn.toFixed(2) + "%";
+            document.getElementById(
+                "annualReturn"
+            ).textContent =
+                annualReturn.toFixed(2) +
+                "%";
 
-            document.getElementById("maxDrawdown")
-                .textContent =
-                maxDrawdownInfo.drawdown.toFixed(2) + "%";
+            document.getElementById(
+                "maxDrawdown"
+            ).textContent =
+                maxDrawdownInfo.drawdown.toFixed(2) +
+                "%";
 
             const indexName =
                 index === "SP500"
@@ -702,22 +836,22 @@
         }
 
 
-        /*
-         * XIRR
-         *
-         * 根据不规则日期的现金流计算年化内部收益率。
-         *
-         * 现金流：
-         * 每次定投 = 负数
-         * 最后账户市值 = 正数
-         *
-         * 使用二分法寻找 NPV = 0 的收益率。
-         */
+        // ============================================================
+        // XIRR
+        // ============================================================
 
-        function calculateXIRR(cashFlows, dates) {
+        function calculateXIRR(
+            cashFlows,
+            dates
+        ) {
 
-            if (cashFlows.length !== dates.length) {
+            if (
+                cashFlows.length !==
+                dates.length
+            ) {
+
                 return null;
+
             }
 
             let hasPositive = false;
@@ -735,28 +869,48 @@
 
             }
 
-            if (!hasPositive || !hasNegative) {
+            if (
+                !hasPositive ||
+                !hasNegative
+            ) {
+
                 return null;
+
             }
 
             const firstDate =
-                new Date(dates[0]).getTime();
+                new Date(
+                    dates[0]
+                ).getTime();
+
 
             function npv(rate) {
 
                 let result = 0;
 
-                for (let i = 0; i < cashFlows.length; i++) {
+                for (
+                    let i = 0;
+                    i < cashFlows.length;
+                    i++
+                ) {
 
                     const currentDate =
-                        new Date(dates[i]).getTime();
+                        new Date(
+                            dates[i]
+                        ).getTime();
 
                     const years =
                         (
                             currentDate -
                             firstDate
                         ) /
-                        (365 * 24 * 60 * 60 * 1000);
+                        (
+                            365 *
+                            24 *
+                            60 *
+                            60 *
+                            1000
+                        );
 
                     result +=
                         cashFlows[i] /
@@ -771,48 +925,56 @@
 
             }
 
+
             let low = -0.9999;
             let high = 10;
 
-            let lowValue = npv(low);
-            let highValue = npv(high);
+            let lowValue =
+                npv(low);
+
+            let highValue =
+                npv(high);
 
             if (
                 !isFinite(lowValue) ||
                 !isFinite(highValue)
             ) {
+
                 return null;
+
             }
 
-            /*
-             * 如果两端没有形成区间，
-             * 尝试扩大正收益率搜索范围。
-             */
 
             let attempts = 0;
 
             while (
                 lowValue * highValue > 0 &&
-                attempts < 20
+                attempts < 30
             ) {
 
                 high *= 2;
 
-                highValue = npv(high);
+                highValue =
+                    npv(high);
 
                 attempts++;
 
             }
 
-            if (lowValue * highValue > 0) {
+            if (
+                lowValue * highValue > 0
+            ) {
+
                 return null;
+
             }
 
-            /*
-             * 二分法
-             */
 
-            for (let i = 0; i < 200; i++) {
+            for (
+                let i = 0;
+                i < 200;
+                i++
+            ) {
 
                 const mid =
                     (low + high) / 2;
@@ -823,11 +985,14 @@
                 if (
                     !isFinite(midValue)
                 ) {
+
                     return null;
+
                 }
 
                 if (
-                    Math.abs(midValue) < 0.000001
+                    Math.abs(midValue) <
+                    0.000001
                 ) {
 
                     return mid;
@@ -839,40 +1004,61 @@
                 ) {
 
                     high = mid;
-                    highValue = midValue;
+
+                    highValue =
+                        midValue;
 
                 } else {
 
                     low = mid;
-                    lowValue = midValue;
+
+                    lowValue =
+                        midValue;
 
                 }
 
             }
 
-            return (low + high) / 2;
+            return (
+                low + high
+            ) / 2;
 
         }
 
 
+        // ============================================================
+        // 定投模拟
+        // ============================================================
+
         function simulateDCA() {
 
             const index =
-                document.getElementById("indexSelect").value;
+                document.getElementById(
+                    "indexSelect"
+                ).value;
 
             const start =
-                document.getElementById("startDate").value;
+                document.getElementById(
+                    "startDate"
+                ).value;
 
             const end =
-                document.getElementById("endDate").value;
+                document.getElementById(
+                    "endDate"
+                ).value;
 
             const monthlyInvestment =
                 parseFloat(
-                    document.getElementById("monthlyInvestment").value
+                    document.getElementById(
+                        "monthlyInvestment"
+                    ).value
                 );
 
             const message =
-                document.getElementById("dcaMessage");
+                document.getElementById(
+                    "dcaMessage"
+                );
+
 
             if (!start || !end) {
 
@@ -883,6 +1069,7 @@
 
             }
 
+
             if (start >= end) {
 
                 message.textContent =
@@ -891,6 +1078,7 @@
                 return;
 
             }
+
 
             if (
                 isNaN(monthlyInvestment) ||
@@ -904,16 +1092,20 @@
 
             }
 
+
             const data =
                 index === "SP500"
                     ? sp500Data
                     : ndxData;
 
+
             const selected =
-                data.filter(item =>
-                    item.date >= start &&
-                    item.date <= end
+                data.filter(
+                    item =>
+                        item.date >= start &&
+                        item.date <= end
                 );
+
 
             if (selected.length < 2) {
 
@@ -924,34 +1116,51 @@
 
             }
 
-            /*
-             * 每个月选择该月第一个交易日。
-             */
+
+            // --------------------------------------------------------
+            // 每个月的第一个交易日
+            // --------------------------------------------------------
 
             const monthlyData = {};
 
             for (const item of selected) {
 
                 const month =
-                    item.date.substring(0, 7);
+                    item.date.substring(
+                        0,
+                        7
+                    );
 
                 if (!monthlyData[month]) {
 
-                    monthlyData[month] = item;
+                    monthlyData[month] =
+                        item;
 
                 }
 
             }
 
+
             let shares = 0;
+
             let totalInvested = 0;
 
             const dcaHistory = [];
 
             const cashFlows = [];
+
             const cashFlowDates = [];
 
-            for (const month of Object.keys(monthlyData)) {
+
+            // --------------------------------------------------------
+            // 执行每月定投
+            // --------------------------------------------------------
+
+            for (
+                const month of Object.keys(
+                    monthlyData
+                )
+            ) {
 
                 const item =
                     monthlyData[month];
@@ -960,14 +1169,21 @@
                     monthlyInvestment;
 
                 const boughtShares =
-                    investment / item.value;
+                    investment /
+                    item.value;
 
-                shares += boughtShares;
+                shares +=
+                    boughtShares;
 
-                totalInvested += investment;
+                totalInvested +=
+                    investment;
 
+
+                // 此时的账户市值
                 const currentValue =
-                    shares * item.value;
+                    shares *
+                    item.value;
+
 
                 dcaHistory.push({
 
@@ -975,38 +1191,98 @@
 
                     value: currentValue,
 
-                    invested: totalInvested
+                    invested:
+                        totalInvested
 
                 });
 
-                /*
-                 * 投资人的现金流：
-                 * 钱离开投资人账户，所以是负数。
-                 */
 
-                cashFlows.push(-investment);
-                cashFlowDates.push(item.date);
+                // XIRR现金流
+                cashFlows.push(
+                    -investment
+                );
+
+                cashFlowDates.push(
+                    item.date
+                );
 
             }
 
+
+            // --------------------------------------------------------
+            // 最终结算
+            //
+            // 注意：
+            // 这里使用整个选择区间的最后一个交易日，
+            // 而不是最后一次定投日。
+            // --------------------------------------------------------
+
+            const finalItem =
+                selected[
+                    selected.length - 1
+                ];
+
             const lastPrice =
-                selected[selected.length - 1].value;
+                finalItem.value;
 
             const finalValue =
-                shares * lastPrice;
+                shares *
+                lastPrice;
 
-            /*
-             * 最后一天卖出全部资产。
-             */
 
-            cashFlows.push(finalValue);
-            cashFlowDates.push(
-                selected[selected.length - 1].date
+            // --------------------------------------------------------
+            // 给定投资曲线增加最终结算点
+            // --------------------------------------------------------
+
+            const lastHistory =
+                dcaHistory[
+                    dcaHistory.length - 1
+                ];
+
+            if (
+                lastHistory.date !==
+                finalItem.date
+            ) {
+
+                dcaHistory.push({
+
+                    date:
+                        finalItem.date,
+
+                    value:
+                        finalValue,
+
+                    invested:
+                        totalInvested
+
+                });
+
+            } else {
+
+                // 如果最后一次定投恰好就是最终交易日，
+                // 直接确保它与最终市值一致。
+
+                lastHistory.value =
+                    finalValue;
+
+                lastHistory.invested =
+                    totalInvested;
+
+            }
+
+
+            // --------------------------------------------------------
+            // XIRR最后加入最终市值
+            // --------------------------------------------------------
+
+            cashFlows.push(
+                finalValue
             );
 
-            /*
-             * 真正的 XIRR。
-             */
+            cashFlowDates.push(
+                finalItem.date
+            );
+
 
             const xirr =
                 calculateXIRR(
@@ -1014,8 +1290,14 @@
                     cashFlowDates
                 );
 
+
+            // --------------------------------------------------------
+            // 定投普通收益率
+            // --------------------------------------------------------
+
             const profit =
-                finalValue - totalInvested;
+                finalValue -
+                totalInvested;
 
             const returnRate =
                 (
@@ -1025,23 +1307,64 @@
                 ) * 100;
 
 
+            // ========================================================
+            // 一次性投入
+            // ========================================================
+
             /*
-             * 一次性投入模拟
+             * 一次性投入金额与定投总投入完全相同。
              *
-             * 投入金额 = 定投总投入
-             * 投入日期 = 第一笔定投日期
+             * 投资时间：
+             * 第一次定投的交易日。
+             *
+             * 结束时间：
+             * 整个模拟区间最后一个交易日。
              */
 
             const firstInvestment =
                 dcaHistory[0];
 
+
+            /*
+             * 这里必须使用“第一次定投”的真实日期。
+             * dcaHistory[0]就是第一次定投。
+             */
+
+            const lumpStartDate =
+                firstInvestment.date;
+
+            const lumpStartPrice =
+                monthlyData[
+                    lumpStartDate.substring(
+                        0,
+                        7
+                    )
+                ].value;
+
+
+            /*
+             * 一次性买入的份额：
+             *
+             * 总投入 ÷ 第一次定投当天指数价格
+             */
+
             const lumpShares =
                 totalInvested /
-                firstInvestment.value;
+                lumpStartPrice;
+
+
+            /*
+             * 到最终交易日的市值
+             */
 
             const lumpFinalValue =
                 lumpShares *
                 lastPrice;
+
+
+            /*
+             * 一次性收益率
+             */
 
             const lumpReturnRate =
                 (
@@ -1050,14 +1373,19 @@
                     1
                 ) * 100;
 
+
+            /*
+             * 一次性年化收益率
+             */
+
             const lumpStartTime =
                 new Date(
-                    firstInvestment.date
+                    lumpStartDate
                 ).getTime();
 
             const lumpEndTime =
                 new Date(
-                    selected[selected.length - 1].date
+                    finalItem.date
                 ).getTime();
 
             const lumpYears =
@@ -1065,7 +1393,13 @@
                     lumpEndTime -
                     lumpStartTime
                 ) /
-                (365.25 * 24 * 60 * 60 * 1000);
+                (
+                    365.25 *
+                    24 *
+                    60 *
+                    60 *
+                    1000
+                );
 
             let lumpAnnualReturn = 0;
 
@@ -1078,7 +1412,8 @@
                         Math.pow(
                             lumpFinalValue /
                             totalInvested,
-                            1 / lumpYears
+                            1 /
+                            lumpYears
                         ) - 1
                     ) * 100;
 
@@ -1086,89 +1421,160 @@
 
 
             /*
-             * 显示定投结果
+             * 指数本身的价格倍数
+             *
+             * 这个数字应该与一次性投入的资金倍数
+             * 基本完全一致。
              */
 
-            document.getElementById("dcaInvested")
-                .textContent =
+            const priceMultiple =
+                lastPrice /
+                lumpStartPrice;
+
+
+            // ========================================================
+            // 显示定投结果
+            // ========================================================
+
+            document.getElementById(
+                "dcaInvested"
+            ).textContent =
                 totalInvested.toFixed(2);
 
-            document.getElementById("dcaValue")
-                .textContent =
+
+            document.getElementById(
+                "dcaValue"
+            ).textContent =
                 finalValue.toFixed(2);
 
-            document.getElementById("dcaProfit")
-                .textContent =
+
+            document.getElementById(
+                "dcaProfit"
+            ).textContent =
                 profit >= 0
-                    ? "+" + profit.toFixed(2)
+                    ? "+" +
+                      profit.toFixed(2)
                     : profit.toFixed(2);
 
-            document.getElementById("dcaReturn")
-                .textContent =
-                returnRate.toFixed(2) + "%";
 
-            document.getElementById("dcaAnnualReturn")
-                .textContent =
+            document.getElementById(
+                "dcaReturn"
+            ).textContent =
+                returnRate.toFixed(2) +
+                "%";
+
+
+            document.getElementById(
+                "dcaAnnualReturn"
+            ).textContent =
                 xirr !== null
-                    ? (xirr * 100).toFixed(2) + "%"
+                    ? (
+                        xirr * 100
+                    ).toFixed(2) + "%"
                     : "--";
 
 
-            /*
-             * 显示一次性投入结果
-             */
+            // ========================================================
+            // 显示一次性投入结果
+            // ========================================================
 
-            document.getElementById("lumpInvested")
-                .textContent =
+            document.getElementById(
+                "lumpInvested"
+            ).textContent =
                 totalInvested.toFixed(2);
 
-            document.getElementById("lumpValue")
-                .textContent =
+
+            document.getElementById(
+                "lumpValue"
+            ).textContent =
                 lumpFinalValue.toFixed(2);
 
-            document.getElementById("lumpReturn")
-                .textContent =
-                lumpReturnRate.toFixed(2) + "%";
 
-            document.getElementById("lumpAnnualReturn")
-                .textContent =
-                lumpAnnualReturn.toFixed(2) + "%";
+            document.getElementById(
+                "lumpReturn"
+            ).textContent =
+                lumpReturnRate.toFixed(2) +
+                "%";
+
+
+            document.getElementById(
+                "lumpAnnualReturn"
+            ).textContent =
+                lumpAnnualReturn.toFixed(2) +
+                "%";
+
+
+            document.getElementById(
+                "priceMultiple"
+            ).textContent =
+                priceMultiple.toFixed(2) +
+                " 倍";
+
+
+            // ========================================================
+            // 提示信息
+            // ========================================================
+
+            const indexName =
+                index === "SP500"
+                    ? "S&P 500"
+                    : "Nasdaq-100";
 
 
             message.textContent =
-                `共进行了 ${dcaHistory.length} 次定投，使用 ${index === "SP500" ? "S&P 500" : "Nasdaq-100"} 数据。定投年化收益率现在使用 XIRR 计算。`;
+                `共进行了 ${Object.keys(monthlyData).length} 次定投，使用 ${indexName} 数据。最终结算日为 ${finalItem.date}，定投年化收益率使用 XIRR 计算。`;
 
 
-            document.getElementById("comparisonMessage")
-                .textContent =
-                `一次性投入与定投使用相同的总投入金额；一次性投入假设在第一笔定投的交易日全部投入。`;
+            document.getElementById(
+                "comparisonMessage"
+            ).textContent =
+                `一次性投入：${lumpStartDate} 以 ${lumpStartPrice.toFixed(2)} 点买入，最终 ${finalItem.date} 为 ${lastPrice.toFixed(2)} 点；指数价格约为 ${priceMultiple.toFixed(2)} 倍。`;
 
 
-            drawDCAChart(dcaHistory);
+            drawDCAChart(
+                dcaHistory
+            );
 
         }
 
 
-        function drawDCAChart(history) {
+        // ============================================================
+        // 定投资产曲线
+        // ============================================================
+
+        function drawDCAChart(
+            history
+        ) {
 
             const canvas =
-                document.getElementById("dcaChart");
+                document.getElementById(
+                    "dcaChart"
+                );
 
             if (dcaChart) {
                 dcaChart.destroy();
             }
 
+
             const labels =
-                history.map(item => item.date);
+                history.map(
+                    item => item.date
+                );
 
             const values =
-                history.map(item => item.value);
+                history.map(
+                    item => item.value
+                );
 
             const invested =
-                history.map(item => item.invested);
+                history.map(
+                    item => item.invested
+                );
+
 
             const ctx =
                 canvas.getContext("2d");
+
 
             dcaChart =
                 new Chart(ctx, {
@@ -1241,6 +1647,10 @@
 
         }
 
+
+        // ============================================================
+        // 启动
+        // ============================================================
 
         loadData();
 
