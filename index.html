@@ -138,6 +138,12 @@
             <div class="result-box">
                 最大回撤
                 <strong id="maxDrawdown">--</strong>
+                <div
+                    id="maxDrawdownPeriod"
+                    style="margin-top:8px;color:#666;font-size:14px;"
+                >
+                    --
+                </div>
             </div>
 
         </div>
@@ -499,8 +505,7 @@
 
         function drawChart(
             selected,
-            indexName,
-            maxDrawdownInfo
+            indexName
         ) {
 
             const canvas =
@@ -557,53 +562,6 @@
                     item => item.value
                 );
 
-            const peak =
-                selected[
-                    maxDrawdownInfo.peakIndex
-                ];
-
-            const bottom =
-                selected[
-                    maxDrawdownInfo.bottomIndex
-                ];
-
-            let peakChartIndex =
-                chartData.findIndex(
-                    item =>
-                        item.date === peak.date
-                );
-
-            let bottomChartIndex =
-                chartData.findIndex(
-                    item =>
-                        item.date === bottom.date
-                );
-
-            if (peakChartIndex === -1) {
-                peakChartIndex = 0;
-            }
-
-            if (bottomChartIndex === -1) {
-                bottomChartIndex =
-                    chartData.length - 1;
-            }
-
-            const peakPoints =
-                values.map(
-                    (value, index) =>
-                        index === peakChartIndex
-                            ? value
-                            : null
-                );
-
-            const bottomPoints =
-                values.map(
-                    (value, index) =>
-                        index === bottomChartIndex
-                            ? value
-                            : null
-                );
-
             const ctx =
                 canvas.getContext("2d");
 
@@ -624,22 +582,6 @@
                                 borderWidth: 1.5,
                                 pointRadius: 0,
                                 tension: 0
-                            },
-
-                            {
-                                label: "最大回撤起点",
-                                data: peakPoints,
-                                pointRadius: 7,
-                                pointHoverRadius: 9,
-                                showLine: false
-                            },
-
-                            {
-                                label: "最大回撤终点",
-                                data: bottomPoints,
-                                pointRadius: 7,
-                                pointHoverRadius: 9,
-                                showLine: false
                             }
 
                         ]
@@ -819,6 +761,11 @@
                 maxDrawdownInfo.drawdown.toFixed(2) +
                 "%";
 
+            document.getElementById(
+                "maxDrawdownPeriod"
+            ).textContent =
+                `${selected[maxDrawdownInfo.peakIndex].date} → ${selected[maxDrawdownInfo.bottomIndex].date}`;
+
             const indexName =
                 index === "SP500"
                     ? "S&P 500"
@@ -829,8 +776,7 @@
 
             drawChart(
                 selected,
-                indexName,
-                maxDrawdownInfo
+                indexName
             );
 
         }
@@ -1211,10 +1157,6 @@
 
             // --------------------------------------------------------
             // 最终结算
-            //
-            // 注意：
-            // 这里使用整个选择区间的最后一个交易日，
-            // 而不是最后一次定投日。
             // --------------------------------------------------------
 
             const finalItem =
@@ -1258,9 +1200,6 @@
                 });
 
             } else {
-
-                // 如果最后一次定投恰好就是最终交易日，
-                // 直接确保它与最终市值一致。
 
                 lastHistory.value =
                     finalValue;
@@ -1311,24 +1250,8 @@
             // 一次性投入
             // ========================================================
 
-            /*
-             * 一次性投入金额与定投总投入完全相同。
-             *
-             * 投资时间：
-             * 第一次定投的交易日。
-             *
-             * 结束时间：
-             * 整个模拟区间最后一个交易日。
-             */
-
             const firstInvestment =
                 dcaHistory[0];
-
-
-            /*
-             * 这里必须使用“第一次定投”的真实日期。
-             * dcaHistory[0]就是第一次定投。
-             */
 
             const lumpStartDate =
                 firstInvestment.date;
@@ -1342,29 +1265,15 @@
                 ].value;
 
 
-            /*
-             * 一次性买入的份额：
-             *
-             * 总投入 ÷ 第一次定投当天指数价格
-             */
-
             const lumpShares =
                 totalInvested /
                 lumpStartPrice;
 
 
-            /*
-             * 到最终交易日的市值
-             */
-
             const lumpFinalValue =
                 lumpShares *
                 lastPrice;
 
-
-            /*
-             * 一次性收益率
-             */
 
             const lumpReturnRate =
                 (
@@ -1373,10 +1282,6 @@
                     1
                 ) * 100;
 
-
-            /*
-             * 一次性年化收益率
-             */
 
             const lumpStartTime =
                 new Date(
@@ -1419,13 +1324,6 @@
 
             }
 
-
-            /*
-             * 指数本身的价格倍数
-             *
-             * 这个数字应该与一次性投入的资金倍数
-             * 基本完全一致。
-             */
 
             const priceMultiple =
                 lastPrice /
@@ -1659,3 +1557,5 @@
 </body>
 </html>
 ```
+
+替换后提交 GitHub，网站的历史走势图就不会再出现那两个最大回撤标记；最大回撤的**百分比、起点日期、终点日期**仍然保留。
