@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>美股指数观察器</title>
 
+    <!-- 固定 Chart.js 版本 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -64,6 +67,12 @@
         #message {
             margin-top: 20px;
             color: #666;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 450px;
         }
     </style>
 </head>
@@ -125,14 +134,30 @@
 
     </div>
 
+    <div class="card">
+
+        <h2>历史走势</h2>
+
+        <div class="chart-container">
+            <canvas id="priceChart"></canvas>
+        </div>
+
+    </div>
+
 
     <script>
 
         let sp500Data = [];
         let ndxData = [];
 
+        // 保存当前图表
+        let priceChart = null;
 
+
+        // =========================
         // 读取 S&P 500
+        // =========================
+
         async function loadSP500() {
 
             const response = await fetch("sp500.csv");
@@ -147,24 +172,27 @@
 
             const data = [];
 
-            // 跳过第一行标题
             for (let i = 1; i < lines.length; i++) {
 
                 const parts = lines[i].split(",");
 
                 if (parts.length < 6) continue;
 
-                // 第2列：日期
-                const date = parts[1].replace(/"/g, "").split(" ")[0];
+                const date =
+                    parts[1]
+                    .replace(/"/g, "")
+                    .split(" ")[0];
 
-                // 第6列：Close
-                const value = parseFloat(parts[5]);
+                const value =
+                    parseFloat(parts[5]);
 
                 if (!isNaN(value)) {
+
                     data.push({
                         date: date,
                         value: value
                     });
+
                 }
             }
 
@@ -172,7 +200,10 @@
         }
 
 
+        // =========================
         // 读取 Nasdaq-100
+        // =========================
+
         async function loadNDX() {
 
             const response = await fetch("ndx.csv");
@@ -187,21 +218,25 @@
 
             const data = [];
 
-            // 跳过第一行标题
             for (let i = 1; i < lines.length; i++) {
 
                 const parts = lines[i].split(",");
 
                 if (parts.length < 2) continue;
 
-                const date = parts[0].trim();
-                const value = parseFloat(parts[1]);
+                const date =
+                    parts[0].trim();
+
+                const value =
+                    parseFloat(parts[1]);
 
                 if (!isNaN(value)) {
+
                     data.push({
                         date: date,
                         value: value
                     });
+
                 }
             }
 
@@ -209,15 +244,22 @@
         }
 
 
+        // =========================
         // 页面打开时读取数据
+        // =========================
+
         async function loadData() {
 
-            const message = document.getElementById("message");
+            const message =
+                document.getElementById("message");
 
             try {
 
-                sp500Data = await loadSP500();
-                ndxData = await loadNDX();
+                sp500Data =
+                    await loadSP500();
+
+                ndxData =
+                    await loadNDX();
 
                 message.textContent =
                     `数据读取成功：S&P 500 ${sp500Data.length} 条，Nasdaq-100 ${ndxData.length} 条。`;
@@ -232,33 +274,183 @@
         }
 
 
+        // =========================
+        // 绘制历史走势图
+        // =========================
+
+        function drawChart(selected, indexName) {
+
+            const canvas =
+                document.getElementById("priceChart");
+
+            // 如果已经有旧图表，先删除
+            if (priceChart) {
+
+                priceChart.destroy();
+
+            }
+
+
+            // 数据太多时适当减少绘图点
+            // 计算仍然使用完整数据
+            const maxPoints = 1500;
+
+            let chartData = selected;
+
+            if (selected.length > maxPoints) {
+
+                const step =
+                    Math.ceil(selected.length / maxPoints);
+
+                chartData =
+                    selected.filter((item, index) =>
+                        index % step === 0
+                    );
+
+                // 确保最后一天也显示
+                if (
+                    chartData[chartData.length - 1] !==
+                    selected[selected.length - 1]
+                ) {
+
+                    chartData.push(
+                        selected[selected.length - 1]
+                    );
+
+                }
+            }
+
+
+            const labels =
+                chartData.map(item => item.date);
+
+            const values =
+                chartData.map(item => item.value);
+
+
+            const ctx =
+                canvas.getContext("2d");
+
+
+            priceChart =
+                new Chart(ctx, {
+
+                    type: "line",
+
+                    data: {
+
+                        labels: labels,
+
+                        datasets: [
+                            {
+                                label: indexName,
+
+                                data: values,
+
+                                borderWidth: 1.5,
+
+                                pointRadius: 0,
+
+                                tension: 0
+                            }
+                        ]
+
+                    },
+
+                    options: {
+
+                        responsive: true,
+
+                        maintainAspectRatio: false,
+
+                        interaction: {
+                            mode: "index",
+                            intersect: false
+                        },
+
+                        plugins: {
+
+                            legend: {
+                                display: true
+                            }
+
+                        },
+
+                        scales: {
+
+                            x: {
+
+                                ticks: {
+
+                                    maxTicksLimit: 10
+
+                                }
+
+                            },
+
+                            y: {
+
+                                beginAtZero: false
+
+                            }
+
+                        }
+
+                    }
+
+                });
+
+        }
+
+
+        // =========================
         // 计算
+        // =========================
+
         function calculate() {
 
-            const index = document.getElementById("indexSelect").value;
-            const start = document.getElementById("startDate").value;
-            const end = document.getElementById("endDate").value;
+            const index =
+                document.getElementById("indexSelect").value;
 
-            const message = document.getElementById("message");
+            const start =
+                document.getElementById("startDate").value;
+
+            const end =
+                document.getElementById("endDate").value;
+
+            const message =
+                document.getElementById("message");
+
 
             if (!start || !end) {
-                message.textContent = "请先选择开始日期和结束日期。";
+
+                message.textContent =
+                    "请先选择开始日期和结束日期。";
+
                 return;
             }
 
+
             if (start >= end) {
-                message.textContent = "结束日期必须晚于开始日期。";
+
+                message.textContent =
+                    "结束日期必须晚于开始日期。";
+
                 return;
             }
 
 
             const data =
-                index === "SP500" ? sp500Data : ndxData;
+                index === "SP500"
+                    ? sp500Data
+                    : ndxData;
 
 
-            const selected = data.filter(item =>
-                item.date >= start && item.date <= end
-            );
+            const selected =
+                data.filter(item =>
+                    item.date >= start &&
+                    item.date <= end
+                );
 
 
             if (selected.length < 2) {
@@ -270,16 +462,25 @@
             }
 
 
-            const firstValue = selected[0].value;
-            const lastValue = selected[selected.length - 1].value;
+            const firstValue =
+                selected[0].value;
+
+            const lastValue =
+                selected[selected.length - 1].value;
 
 
+            // =========================
             // 累计收益率
+            // =========================
+
             const totalReturn =
                 (lastValue / firstValue - 1) * 100;
 
 
+            // =========================
             // 年化收益率
+            // =========================
+
             const startTime =
                 new Date(selected[0].date).getTime();
 
@@ -291,43 +492,86 @@
                 (365.25 * 24 * 60 * 60 * 1000);
 
             const annualReturn =
-                (Math.pow(lastValue / firstValue, 1 / years) - 1) * 100;
+                (Math.pow(
+                    lastValue / firstValue,
+                    1 / years
+                ) - 1) * 100;
 
 
+            // =========================
             // 最大回撤
-            let peak = selected[0].value;
+            // =========================
+
+            let peak =
+                selected[0].value;
+
             let maxDrawdown = 0;
+
 
             for (const item of selected) {
 
                 if (item.value > peak) {
+
                     peak = item.value;
+
                 }
+
 
                 const drawdown =
                     (item.value / peak - 1) * 100;
 
+
                 if (drawdown < maxDrawdown) {
+
                     maxDrawdown = drawdown;
+
                 }
+
             }
 
 
-            document.getElementById("returnValue").textContent =
+            // =========================
+            // 显示结果
+            // =========================
+
+            document.getElementById("returnValue")
+                .textContent =
                 totalReturn.toFixed(2) + "%";
 
-            document.getElementById("annualReturn").textContent =
+
+            document.getElementById("annualReturn")
+                .textContent =
                 annualReturn.toFixed(2) + "%";
 
-            document.getElementById("maxDrawdown").textContent =
+
+            document.getElementById("maxDrawdown")
+                .textContent =
                 maxDrawdown.toFixed(2) + "%";
 
 
+            const indexName =
+                index === "SP500"
+                    ? "S&P 500"
+                    : "Nasdaq-100";
+
+
             message.textContent =
-                `使用 ${index === "SP500" ? "S&P 500" : "Nasdaq-100"} 数据，共 ${selected.length} 个交易日。`;
+                `使用 ${indexName} 数据，共 ${selected.length} 个交易日。`;
+
+
+            // =========================
+            // 绘制走势图
+            // =========================
+
+            drawChart(
+                selected,
+                indexName
+            );
+
         }
 
 
+        // 页面打开时读取数据
         loadData();
 
     </script>
